@@ -7,7 +7,8 @@
 		"longDescription": "A floating rose, a panel, and a tray icon for an assistant that runs Gentle Shell with Engram memory. The package carries its own Node.js runtime, engine, and Engram.",
 		"linux": {
 			"deb": {
-				"section": "utils"
+				"section": "utils",
+				"depends": ["libpipewire-0.3-0"]
 			}
 		}
 	}
