@@ -38,7 +38,7 @@ The package needs nothing else installed: it carries its own Node.js, assistant 
 
 | Step | Uses sudo? |
 |---|---|
-| Installs the system libraries the app needs (WebKitGTK, tray support, compilers) | **Yes**, and it asks first |
+| Installs the system libraries the app needs (WebKitGTK, tray support, PipeWire, compilers) | **Yes**, and it asks first |
 | Installs Node.js 24 in `~/.local/share/gentle-dot` (only if you do not already have Node.js 24 or later) | No |
 | Installs Rust with rustup in `~/.rustup` and `~/.cargo` (only if you do not have Rust 1.90 or later) | No |
 | Builds the app from the source folder | No |
@@ -274,6 +274,26 @@ rings (sessions still grant, expire, and stop), no panic shortcut on Linux (only
 z-order of stacked tiles is approximated (a click on a fully covered window may name the
 wrong owner and be refused rather than misdirected), and a compositor restart needs an app
 restart (the capability is cached per process).
+
+## Testing voice input (PipeWire microphone)
+
+Needs the local voice model (Settings → Voice) and a microphone.
+
+1. With PipeWire running (`pw-cli info 0` answers), press the panel's mic button and speak:
+   the level meter moves and the text arrives when you stop. While it records, `pw-top` (or
+   `pw-dump | grep gentle-dot-voice`) lists a `gentle-dot-voice` capture stream.
+2. Change the default input (for example with `wpctl set-default <source id>`) and record
+   again: the new source is used.
+3. Unplug the microphone, or stop PipeWire (`systemctl --user stop pipewire pipewire.socket`),
+   while recording: the panel reports "The microphone was interrupted."
+4. With PipeWire stopped, record again: the app falls back to `parec` or `arecord` when one
+   is installed, else it says "No audio recorder was found. Start PipeWire, or install
+   pulseaudio-utils (parec) or alsa-utils (arecord)." Start PipeWire again afterwards
+   (`systemctl --user start pipewire.socket pipewire`).
+
+An automated smoke records half a second from a running PipeWire:
+`cargo test --lib voice::pipewire::tests::live_pipewire_smoke -- --ignored` in
+`apps/desktop/src-tauri`.
 
 ## Troubleshooting
 

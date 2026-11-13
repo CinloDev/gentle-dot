@@ -13,7 +13,7 @@ T2 | S2 | Virtual keyboard: XKB keymap upload, combos + typing | pending
 T3 | S1,S4 | Wire LinuxDesktop input into mcp permissions/session/working rings | pending
 T4 | S3,S5 | docs/linux-testing.md: manual input test + portability note (wlr vs RemoteDesktop) | pending
 T6 | S1,S4 | Linux app-identity layer (hyprctl activewindow/clients -> AppIdentity: window_owner_at, frontmost_app, focused_app, list_apps, open_app) + Linux blocklist entries | pending
-T5 | S1 | Native Linux microphone (PipeWire) replacing the parec/arecord subprocess — own commit, after input | pending
+T5 | S1 | Native Linux microphone (PipeWire) replacing the parec/arecord subprocess — own commit, after input | in review: odd/tasks/linux-pipewire-microphone.md (PipeWire first, parec/arecord kept as fallback)
 
 ## Log
 L1 (2026-11-08). Cinlo's request framed the goal: repo-wide Linux parity with Windows/macOS "hacer todo" (S1). Phase 1 (portal Screenshot capture) already committed: fa2ac28 fix GDK_SCALE, d436124 feat capture, 5f7cf0f docs. Feasibility map: Hyprland implements both virtual-input protocols, precedents hyprharness/warpd-rs/pixelflux; Rust crates wayland-client + wayland-protocols-{misc,wlr}. Main risk: XKB keymap detail; only visible by live testing. Decision pending in earlier talk: grant/session integration for input (no portal exists for this on Hyprland) — treat virtual-device creation as the gated act, mirroring macOS/Windows session UX (S4).
