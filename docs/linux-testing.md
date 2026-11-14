@@ -284,8 +284,10 @@ Needs the local voice model (Settings → Voice) and a microphone.
    `pw-dump | grep gentle-dot-voice`) lists a `gentle-dot-voice` capture stream.
 2. Change the default input (for example with `wpctl set-default <source id>`) and record
    again: the new source is used.
-3. Unplug the microphone, or stop PipeWire (`systemctl --user stop pipewire pipewire.socket`),
-   while recording: the panel reports "The microphone was interrupted."
+3. Stop PipeWire (`systemctl --user stop pipewire pipewire.socket`) while recording: the panel
+   reports "The microphone was interrupted." Then unplug the microphone while recording and
+   note what happens: losing only the source may leave the recording silent instead of
+   interrupted (known limit, see the task log).
 4. With PipeWire stopped, record again: the app falls back to `parec` or `arecord` when one
    is installed, else it says "No audio recorder was found. Start PipeWire, or install
    pulseaudio-utils (parec) or alsa-utils (arecord)." Start PipeWire again afterwards
