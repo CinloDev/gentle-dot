@@ -98,6 +98,8 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libdbus-1-dev \
+            libpipewire-0.3-dev \
+            libclang-dev \
             pkg-config
 
       - uses: dtolnay/rust-toolchain@stable

@@ -8,7 +8,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Always-on desktop assistant backed by Gentle Shell"
 arch=('x86_64' 'aarch64')
-depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator')
+depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'libpipewire')
 # Keep the bundled binaries (Node.js, Engram, native modules) byte for byte as in the .deb.
 options=('!strip' '!debug')
 source_x86_64=("${pkgname}_${pkgver}_amd64.deb")
