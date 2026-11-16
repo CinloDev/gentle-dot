@@ -239,7 +239,11 @@ impl Stream for PipeWireStream {
             let _ = quit.send(());
         }
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            // A failure reported from the capture thread closes the stream on that same thread
+            // (the machine discards the recording there); it is already on its way out.
+            if thread.thread().id() != std::thread::current().id() {
+                let _ = thread.join();
+            }
         }
     }
 }
@@ -254,8 +258,9 @@ impl Drop for PipeWireStream {
 mod tests {
     use super::*;
     use crate::voice::fake::{FakeClock, FakeRecognizer, Recorder};
-    use crate::voice::Voice;
+    use crate::voice::{Voice, VoiceEvent};
     use std::sync::atomic::AtomicU64;
+    use std::sync::Mutex;
     use std::time::Instant;
 
     fn voice(mic: PipeWireMicrophone) -> (Voice, Arc<FakeRecognizer>) {
@@ -296,6 +301,69 @@ mod tests {
         assert!(!ends_capture(&StreamState::Streaming));
     }
 
+    /// Opens a real `PipeWireStream` around a stand-in capture thread that, when told, reports
+    /// an interruption the way the `interrupted` callback does: from the capture thread itself.
+    #[derive(Default)]
+    struct InterruptedCapture {
+        fail: Mutex<Option<mpsc::Sender<()>>>,
+        returned: Mutex<Option<mpsc::Receiver<()>>>,
+    }
+
+    impl Microphone for InterruptedCapture {
+        fn authorization(&self) -> Authorization {
+            Authorization::Authorized
+        }
+
+        fn request_authorization(&self) -> Authorization {
+            Authorization::Authorized
+        }
+
+        fn open(&self, sink: Sink) -> Result<Box<dyn Stream>, VoiceError> {
+            let (fail, failing) = mpsc::channel();
+            let (returning, returned) = mpsc::channel();
+            let closed = Arc::new(AtomicBool::new(false));
+            let thread = std::thread::spawn({
+                let closed = closed.clone();
+                move || {
+                    while !closed.load(Ordering::SeqCst) {
+                        if failing.recv_timeout(Duration::from_millis(10)).is_ok() {
+                            sink.failed(&VoiceError::Interrupted.to_string());
+                            let _ = returning.send(());
+                            return;
+                        }
+                    }
+                }
+            });
+            *self.fail.lock().unwrap() = Some(fail);
+            *self.returned.lock().unwrap() = Some(returned);
+            Ok(Box::new(PipeWireStream { quit: None, thread: Some(thread), closed }))
+        }
+    }
+
+    #[test]
+    fn an_interruption_reported_from_the_capture_thread_ends_the_recording_once() {
+        let mic = Arc::new(InterruptedCapture::default());
+        let recognizer = Arc::new(FakeRecognizer::granted());
+        *recognizer.final_text.lock().unwrap() = Some("done".into());
+        let voice = Voice::new(mic.clone(), recognizer.clone(), Arc::new(FakeClock(AtomicU64::new(0))));
+        let recorder = Recorder::default();
+        voice.start(None, recorder.events()).unwrap();
+
+        mic.fail.lock().unwrap().take().unwrap().send(()).unwrap();
+        let returned = mic.returned.lock().unwrap().take().unwrap();
+        assert_eq!(
+            returned.recv_timeout(Duration::from_secs(5)),
+            Ok(()),
+            "Sink::failed returns on the capture thread instead of joining it from itself"
+        );
+        assert_eq!(recorder.seen(), vec![VoiceEvent::Error(VoiceError::Interrupted.to_string())]);
+        assert_eq!(recognizer.log.lock().unwrap().cancelled, 1);
+        assert_eq!(voice.stop(), Err(VoiceError::NotRecording));
+
+        voice.start(None, Recorder::default().events()).unwrap();
+        assert_eq!(voice.stop().unwrap().text, "done", "another recording works and closes its thread");
+    }
+
     #[test]
     fn no_pipewire_daemon_is_no_recorder_so_the_fallback_runs() {
         let mic = PipeWireMicrophone { remote: Some("gentle-dot-no-such-pipewire".into()) };
@@ -320,5 +388,55 @@ mod tests {
         let stopped = Instant::now();
         assert_eq!(voice.stop().unwrap().text, "done");
         assert!(stopped.elapsed() < Duration::from_secs(2), "stop ends the stream's thread");
+    }
+
+    /// Needs a running PipeWire with a source that something else stops while this test records
+    /// and then starts again with a source (docs/linux-testing.md): the loss is reported once
+    /// as an interruption, without aborting, and the next recording works.
+    #[test]
+    #[ignore]
+    fn live_pipewire_daemon_loss_is_an_interruption() {
+        let (voice, recognizer) = voice(PipeWireMicrophone::default());
+        let recorder = Recorder::default();
+        voice.start(None, recorder.events()).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while recognizer.log.lock().unwrap().fed.is_empty() {
+            assert!(Instant::now() < deadline, "PCM arrives before the daemon goes away");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while recorder.seen().iter().all(|event| !matches!(event, VoiceEvent::Error(_))) {
+            assert!(Instant::now() < deadline, "stopping the daemon interrupts the recording");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        std::thread::sleep(Duration::from_millis(500));
+        let errors: Vec<_> =
+            recorder.seen().into_iter().filter(|event| matches!(event, VoiceEvent::Error(_))).collect();
+        assert_eq!(errors, vec![VoiceEvent::Error(VoiceError::Interrupted.to_string())]);
+        assert_eq!(recognizer.log.lock().unwrap().cancelled, 1);
+        assert_eq!(voice.stop(), Err(VoiceError::NotRecording));
+
+        // The daemon may answer before its source is back, and a stream opened then stays
+        // silent (a known limit, see the task log), so record again until PCM arrives.
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            assert!(Instant::now() < deadline, "a restarted daemon records again");
+            if voice.start(None, Recorder::default().events()).is_err() {
+                std::thread::sleep(Duration::from_millis(200));
+                continue;
+            }
+            let fed = recognizer.log.lock().unwrap().fed.len();
+            let heard = Instant::now() + Duration::from_secs(2);
+            while recognizer.log.lock().unwrap().fed.len() == fed && Instant::now() < heard {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if recognizer.log.lock().unwrap().fed.len() > fed {
+                assert_eq!(voice.stop().unwrap().text, "done");
+                break;
+            }
+            // A silent attempt may itself be interrupted while the daemon settles.
+            let _ = voice.stop();
+        }
     }
 }

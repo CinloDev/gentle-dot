@@ -285,7 +285,7 @@ Needs the local voice model (Settings → Voice) and a microphone.
 2. Change the default input (for example with `wpctl set-default <source id>`) and record
    again: the new source is used.
 3. Stop PipeWire (`systemctl --user stop pipewire pipewire.socket`) while recording: the panel
-   reports "The microphone was interrupted." Then unplug the microphone while recording and
+   reports "The microphone was interrupted." once and the app keeps running. Then unplug the microphone while recording and
    note what happens: losing only the source may leave the recording silent instead of
    interrupted (known limit, see the task log).
 4. With PipeWire stopped, record again: the app falls back to `parec` or `arecord` when one
@@ -295,7 +295,10 @@ Needs the local voice model (Settings → Voice) and a microphone.
 
 An automated smoke records half a second from a running PipeWire:
 `cargo test --lib voice::pipewire::tests::live_pipewire_smoke -- --ignored` in
-`apps/desktop/src-tauri`.
+`apps/desktop/src-tauri`. `voice::pipewire::tests::live_pipewire_daemon_loss_is_an_interruption`
+(also `--ignored`) checks step 3: stop PipeWire a few seconds after it starts recording and
+start it again with a source; it passes when the loss is reported once and the next recording
+works.
 
 ## Troubleshooting
 
