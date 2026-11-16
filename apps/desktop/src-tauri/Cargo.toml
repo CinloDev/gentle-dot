@@ -77,6 +77,10 @@ wayland-protocols-wlr = { version = "=0.3.12", features = ["client"] }
 # Keyboard input (T2): `zwp_virtual_keyboard_v1` and its manager live in the misc protocols, the
 # else-unpublished ones the virtual keyboard stayed in.
 wayland-protocols-misc = { version = "=0.3.12", features = ["client"] }
+# The microphone (voice/pipewire.rs, odd/tasks/linux-pipewire-microphone.md): a native PipeWire
+# capture stream. Links libpipewire-0.3 and builds its bindings with bindgen, so building needs
+# libpipewire-0.3-dev and libclang; parec/arecord remain the fallback when no daemon answers.
+pipewire = "0.10"
 
 # The store's tests build D-Bus errors (the same `dbus` that dbus-secret-service uses).
 [target.'cfg(target_os = "linux")'.dev-dependencies]

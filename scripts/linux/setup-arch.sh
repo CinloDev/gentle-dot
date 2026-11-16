@@ -16,7 +16,8 @@ fi
 # Tauri 2 Linux prerequisites (https://v2.tauri.app/start/prerequisites/), plus git (the
 # assistant's engine checks for it) and xz for the Node.js download. The docs list
 # libappindicator-gtk3, which Arch no longer ships (checked 2026-10-08); the tray loads
-# libayatana-appindicator first anyway.
+# libayatana-appindicator first anyway. libpipewire carries the library and its headers, and
+# clang the libclang the PipeWire microphone's bindings are generated with.
 SYSTEM_PACKAGES=(
 	webkit2gtk-4.1
 	base-devel
@@ -27,6 +28,8 @@ SYSTEM_PACKAGES=(
 	appmenu-gtk-module
 	libayatana-appindicator
 	librsvg
+	libpipewire
+	clang
 	xdotool
 	git
 	xz

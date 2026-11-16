@@ -11,7 +11,8 @@ set -euo pipefail
 DISTRO_NAME="$(. /etc/os-release && echo "${PRETTY_NAME:-Debian}")"
 
 # Tauri 2 Linux prerequisites (https://v2.tauri.app/start/prerequisites/), plus git (the
-# assistant's engine checks for it) and xz-utils and ca-certificates for the Node.js download.
+# assistant's engine checks for it), xz-utils and ca-certificates for the Node.js download, and
+# libpipewire, libclang, and pkg-config for the PipeWire microphone's bindings.
 SYSTEM_PACKAGES=(
 	libwebkit2gtk-4.1-dev
 	build-essential
@@ -22,6 +23,9 @@ SYSTEM_PACKAGES=(
 	libssl-dev
 	libayatana-appindicator3-dev
 	librsvg2-dev
+	libpipewire-0.3-dev
+	libclang-dev
+	pkg-config
 	git
 	xz-utils
 	ca-certificates

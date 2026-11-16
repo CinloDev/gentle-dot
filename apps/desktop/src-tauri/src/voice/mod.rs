@@ -26,6 +26,8 @@ mod capture_thread;
 pub mod engine;
 #[cfg(test)]
 mod fake;
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub mod fallback;
 pub mod locale;
 mod machine;
 #[cfg(target_os = "macos")]
@@ -34,6 +36,8 @@ pub mod model;
 pub mod parakeet;
 #[cfg(unix)]
 pub mod pipe;
+#[cfg(target_os = "linux")]
+pub mod pipewire;
 #[cfg_attr(not(windows), allow(dead_code))]
 pub mod wasapi;
 
@@ -138,7 +142,7 @@ pub enum VoiceError {
     /// The local model is the only engine here (Linux, Windows) and it is not downloaded.
     NoModel,
     NoMicrophone,
-    /// Linux: neither `parec` nor `arecord` is installed.
+    /// Linux: no PipeWire daemon answers and neither `parec` nor `arecord` is installed.
     NoRecorder,
     Interrupted,
     Failed(String),
@@ -162,7 +166,7 @@ impl fmt::Display for VoiceError {
             VoiceError::NoModel => f.write_str("Download the local voice model to use voice input."),
             VoiceError::NoMicrophone => f.write_str("No microphone is available."),
             VoiceError::NoRecorder => f.write_str(
-                "No audio recorder was found. Install pulseaudio-utils (parec) or alsa-utils (arecord).",
+                "No audio recorder was found. Start PipeWire, or install pulseaudio-utils (parec) or alsa-utils (arecord).",
             ),
             VoiceError::Interrupted => f.write_str("The microphone was interrupted."),
             VoiceError::Failed(message) => f.write_str(message),

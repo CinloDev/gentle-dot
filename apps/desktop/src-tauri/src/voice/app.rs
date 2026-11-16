@@ -117,8 +117,8 @@ pub fn start(app: &AppHandle) -> (VoiceInput, VoiceModel) {
     (platform_input(local.clone()), VoiceModel { manager, local })
 }
 
-/// macOS: the native microphone, Parakeet when installed, else Apple Speech. Linux: a
-/// command-line recorder and Parakeet. Windows: WASAPI and Parakeet. Elsewhere: nothing.
+/// macOS: the native microphone, Parakeet when installed, else Apple Speech. Linux: PipeWire,
+/// else a command-line recorder, and Parakeet. Windows: WASAPI and Parakeet. Elsewhere: nothing.
 fn platform_input(local: Arc<Parakeet>) -> VoiceInput {
     #[cfg(target_os = "macos")]
     return VoiceInput::new(Voice::new(
@@ -128,7 +128,10 @@ fn platform_input(local: Arc<Parakeet>) -> VoiceInput {
     ));
     #[cfg(target_os = "linux")]
     return VoiceInput::new(Voice::new(
-        Arc::new(super::pipe::PipeMicrophone::system()),
+        Arc::new(super::fallback::FallbackMicrophone::new(
+            Arc::new(super::pipewire::PipeWireMicrophone::default()),
+            Arc::new(super::pipe::PipeMicrophone::system()),
+        )),
         Arc::new(Preferred::new(local, None)),
         Arc::new(SystemClock),
     ));

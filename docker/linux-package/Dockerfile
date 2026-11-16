@@ -16,11 +16,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
 	PATH=/usr/local/cargo/bin:/usr/local/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Tauri 2 Linux prerequisites (as in scripts/linux/setup-debian.sh), plus git for the runtime's
-# daemon commit, and lsof, procps, and Xvfb for smoke runs.
+# daemon commit, libpipewire and libclang for the PipeWire microphone (voice/pipewire.rs), and
+# lsof, procps, and Xvfb for smoke runs.
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 		build-essential ca-certificates curl file git pkg-config wget xz-utils \
 		libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+		libpipewire-0.3-dev libclang-dev \
 		lsof procps xauth xvfb \
 	&& rm -rf /var/lib/apt/lists/*
 
